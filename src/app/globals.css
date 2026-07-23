@@ -1,26 +1,205 @@
 @import "tailwindcss";
 
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Jurist BF — « L'Académie » (identité CLAIRE, premium & lumineuse)
+  Fond blanc cassé légèrement bleuté · BLEU ROYAL = couleur principale (identité, navigation) ·
+  BLEU CLAIR = interactions · ÉMERAUDE = progression & actions · OR = récompense RARE ·
+  Texte noir profond. Le mode sombre existe en option (.dark) mais le clair est l'identité.
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Fond blanc cassé très légèrement bleuté */
+  --background: 214 46% 98%;
+  --foreground: 224 44% 11%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 224 44% 11%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 44% 11%;
+
+  /* BLEU ROYAL — couleur principale (marque, navigation, sélection, focus) */
+  --primary: 227 66% 47%;
+  --primary-foreground: 0 0% 100%;
+
+  /* ÉMERAUDE — progression & actions (CTA « avancer », barres de progression, succès) */
+  --action: 158 82% 35%;
+  --action-foreground: 0 0% 100%;
+
+  /* BLEU CLAIR — interactions (liens, survols) */
+  --interaction: 212 92% 52%;
+
+  /* Surfaces secondaires */
+  --secondary: 214 34% 95%;
+  --secondary-foreground: 224 40% 18%;
+
+  --muted: 214 34% 95%;
+  --muted-foreground: 218 14% 42%;
+
+  --accent: 214 42% 96%;
+  --accent-foreground: 227 66% 47%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 214 30% 90%;
+  --input: 214 30% 88%;
+  --ring: 227 66% 47%;
+
+  --radius: 0.95rem;
+
+  /* OR — récompense uniquement (sceaux, badges, certifs, examens réussis) */
+  --gold: 40 62% 44%;
+  --gold-soft: 40 64% 52%;
+  --gold-foreground: 40 55% 8%;
+
+  /* Parchemin — surfaces de lecture (Salle d'étude) */
+  --parchment: 40 46% 95%;
+  --parchment-foreground: 30 26% 16%;
+
+  /* Feedback sémantique */
+  --warning: 33 90% 46%;
+
+  /* Phases / catégories */
+  --cat-emerald: 158 82% 35%;
+  --cat-indigo: 243 72% 58%;
+  --cat-violet: 262 70% 56%;
+  --cat-amber: 38 92% 50%;
+  --cat-sky: 205 90% 48%;
+  --cat-rose: 347 74% 54%;
+
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-space-mono), ui-monospace, monospace;
+}
+
+/* Mode sombre — OPTION future (le clair reste l'identité). */
+.dark {
+  --background: 224 46% 6%;
+  --foreground: 213 28% 92%;
+  --card: 223 43% 9%;
+  --card-foreground: 213 28% 92%;
+  --popover: 223 45% 8%;
+  --popover-foreground: 213 28% 92%;
+  --primary: 224 76% 66%;
+  --primary-foreground: 224 46% 6%;
+  --action: 158 74% 46%;
+  --action-foreground: 224 46% 6%;
+  --interaction: 205 90% 62%;
+  --secondary: 221 33% 15%;
+  --secondary-foreground: 213 28% 92%;
+  --muted: 221 30% 13%;
+  --muted-foreground: 214 15% 62%;
+  --accent: 221 33% 16%;
+  --accent-foreground: 224 76% 72%;
+  --destructive: 350 78% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 216 28% 22%;
+  --input: 216 28% 20%;
+  --ring: 224 76% 66%;
+  --gold: 41 62% 62%;
+  --gold-soft: 41 60% 72%;
+  --warning: 38 92% 58%;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-action: hsl(var(--action));
+  --color-action-foreground: hsl(var(--action-foreground));
+  --color-interaction: hsl(var(--interaction));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-gold: hsl(var(--gold));
+  --color-gold-soft: hsl(var(--gold-soft));
+  --color-gold-foreground: hsl(var(--gold-foreground));
+  --color-parchment: hsl(var(--parchment));
+  --color-parchment-foreground: hsl(var(--parchment-foreground));
+  --color-warning: hsl(var(--warning));
+
+  --color-cat-emerald: hsl(var(--cat-emerald));
+  --color-cat-indigo: hsl(var(--cat-indigo));
+  --color-cat-violet: hsl(var(--cat-violet));
+  --color-cat-amber: hsl(var(--cat-amber));
+  --color-cat-sky: hsl(var(--cat-sky));
+  --color-cat-rose: hsl(var(--cat-rose));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 5px);
+  --radius-sm: calc(var(--radius) - 9px);
+  --radius-xl: calc(var(--radius) + 5px);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Carte premium claire : blanc, bordure fine, ombre douce et aérée. */
+@utility hall {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow:
+    0 1px 2px hsl(224 44% 12% / 0.04),
+    0 14px 34px -18px hsl(224 44% 20% / 0.12);
+}
+
+/* Verre clair — éléments flottants. */
+@utility glass {
+  background-color: hsl(0 0% 100% / 0.72);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  border: 1px solid hsl(var(--border) / 0.8);
+}
+
+/* Filet doré (surfaces de récompense). */
+@utility gilt {
+  border: 1px solid hsl(var(--gold) / 0.4);
+  box-shadow:
+    inset 0 1px 0 0 hsl(var(--gold-soft) / 0.25),
+    0 18px 40px -22px hsl(var(--gold) / 0.35);
+}
+
+@layer base {
+  * {
+    @apply border-border;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+  /* Ambiance claire & lumineuse : voiles bleu royal / émeraude très diffus. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(60rem 45rem at 8% -6%, hsl(227 66% 47% / 0.06), transparent 55%),
+      radial-gradient(55rem 45rem at 100% 0%, hsl(158 82% 35% / 0.05), transparent 55%);
+  }
 }

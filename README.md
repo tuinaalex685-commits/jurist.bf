@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Jurist BF
 
-## Getting Started
+SaaS d'apprentissage juridique **actif**. On n'apprend pas un article isolément :
+on part d'une **situation**, on **comprend** la règle, on **mémorise** le texte
+officiel, puis on **teste** ses acquis.
 
-First, run the development server:
+Premier marché et première base juridique : **Burkina Faso** (Code civil burkinabè).
+L'architecture reste conçue multi-pays / multi-codes.
+
+## Stack
+
+- **Next.js 16** (App Router, Turbopack) + **React 19** + TypeScript + Tailwind
+- **Supabase** (Postgres + Auth + RLS) — *à brancher*
+- **Gemini** — génération d'exercices depuis la base validée uniquement — *à brancher*
+
+## Démarrer en local
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Puis ouvrir http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/app/` — routes (App Router)
+- `src/lib/config.ts` — identité produit + constantes pédagogiques
+- `database/schema.sql` — schéma Postgres/Supabase (à appliquer)
+- `docs/ARCHITECTURE.md` — plan d'architecture et roadmap
+- `.env.local.example` — variables d'environnement (copier vers `.env.local`)
 
-## Learn More
+## Principes non négociables
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ce n'est pas un chatbot. La base juridique validée par l'admin est l'unique source
+de vérité. L'IA génère des exercices depuis les données validées — elle n'invente
+jamais le droit.
