@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Fraunces, Inter, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AppLayout } from "@/components/layout/app-layout";
 import { APP_NAME, APP_TAGLINE } from "@/lib/config";
 
 // Serif d'apparat (titres, marque, grands nombres) — l'ADN "droit/prestige".
@@ -44,7 +43,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
-          <AppLayout>{children}</AppLayout>
+          {children}
         </ThemeProvider>
       </body>
     </html>
