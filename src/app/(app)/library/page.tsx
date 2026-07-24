@@ -1,88 +1,71 @@
-"use client"
-
+import type { Metadata } from "next";
 import Link from "next/link";
-import { motion, type Variants } from "framer-motion";
-import { Book, ChevronRight, Search, Filter } from "lucide-react";
-import { MOCK_LEGAL_CODES, MOCK_COUNTRY } from "@/lib/mock-data";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { ArrowRight, BookMarked, Library as LibraryIcon } from "lucide-react";
+import { getCodes } from "@/server/modules/catalog/service";
 
-const container: Variants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
-};
+export const metadata: Metadata = { title: "Bibliothèque" };
 
-const item: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-};
+export default async function LibraryPage() {
+  const codes = await getCodes();
 
-export default function LibraryPage() {
   return (
-    <div className="space-y-8 pb-12">
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="pt-4 space-y-4">
-        <h1 className="text-4xl font-extrabold tracking-tight">Bibliothèque Juridique</h1>
-        <p className="text-muted-foreground text-lg max-w-2xl">
-          Sélectionnez un code pour commencer ou reprendre votre apprentissage. Tout le droit burkinabè à portée de clic.
+    <div className="space-y-8">
+      <header>
+        <p className="text-sm font-bold uppercase tracking-widest text-primary">Le Codex</p>
+        <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight md:text-4xl">
+          Bibliothèque juridique
+        </h1>
+        <p className="mt-2 max-w-2xl text-muted-foreground">
+          Chaque code est un ouvrage à explorer. Ouvrez un tome pour parcourir ses livres, chapitres et articles.
         </p>
-      </motion.div>
+      </header>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          <Input placeholder="Rechercher un code ou un article..." className="pl-10 h-12 text-base bg-card/50" />
+      {codes.length === 0 ? (
+        <div className="hall flex flex-col items-center gap-3 p-12 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+            <LibraryIcon className="h-7 w-7 text-primary" />
+          </span>
+          <p className="font-display text-lg font-semibold">Le Codex se remplit bientôt</p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Les premiers codes juridiques seront publiés très prochainement.
+          </p>
         </div>
-        <Button variant="outline" size="lg" className="h-12 gap-2 border-border/50 bg-card/50">
-          <Filter className="h-4 w-4" />
-          Filtrer par domaine
-        </Button>
-      </motion.div>
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {codes.map((code) => (
+            <Link
+              key={code.id}
+              href={`/library/${code.id}`}
+              className="hall group flex flex-col p-6 transition-all hover:-translate-y-1 hover:border-primary/30"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+                  <BookMarked className="h-5 w-5 text-primary" />
+                </span>
+                {code.country && (
+                  <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-xs font-semibold text-muted-foreground">
+                    {code.country.iso}
+                  </span>
+                )}
+              </div>
 
-      <motion.div variants={container} initial="hidden" animate="show" className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {MOCK_LEGAL_CODES.map((code) => (
-          <motion.div variants={item} key={code.id}>
-            <Link href={`/library/${code.id}`}>
-              <Card className="h-full hover:border-accent/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-pointer bg-card/50 backdrop-blur-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -z-10 group-hover:bg-primary/10 transition-colors"></div>
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-4">
-                    <Badge className="bg-primary/20 text-primary hover:bg-primary/30 border-none font-semibold">
-                      {MOCK_COUNTRY.name}
-                    </Badge>
-                    <Book className="h-5 w-5 text-muted-foreground group-hover:text-accent transition-colors" />
-                  </div>
-                  <CardTitle className="text-2xl font-bold leading-tight group-hover:text-primary transition-colors">{code.name}</CardTitle>
-                  <CardDescription className="line-clamp-2 mt-2 text-base">
-                    {code.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4 mt-2">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm font-medium">
-                        <span className="text-muted-foreground">Progression</span>
-                        <span className="text-primary font-bold">12%</span>
-                      </div>
-                      <Progress value={12} className="h-2 bg-muted/50" />
-                    </div>
-                    
-                    <div className="flex items-center text-sm font-bold text-accent uppercase tracking-wider pt-2 border-t border-border/50">
-                      Explorer le code
-                      <ChevronRight className="ml-1 h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <h2 className="font-display text-xl font-semibold leading-tight">{code.name}</h2>
+              {code.description && (
+                <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{code.description}</p>
+              )}
+
+              <div className="mt-auto flex items-center justify-between pt-5">
+                <span className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">{code.articleCount}</span> article{code.articleCount > 1 ? "s" : ""}
+                </span>
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition-transform group-hover:translate-x-0.5">
+                  Explorer <ArrowRight className="h-4 w-4" />
+                </span>
+              </div>
             </Link>
-          </motion.div>
-        ))}
-      </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

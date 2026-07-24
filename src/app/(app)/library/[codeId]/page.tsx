@@ -1,101 +1,159 @@
-"use client"
-
 import Link from "next/link";
-import { use } from "react";
-import { motion, type Variants } from "framer-motion";
-import { ArrowLeft, FileText, CheckCircle2, Circle } from "lucide-react";
-import { MOCK_LEGAL_CODES, MOCK_ARTICLE } from "@/lib/mock-data";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { notFound } from "next/navigation";
+import { ArrowLeft, ArrowRight, Lock } from "lucide-react";
+import { getCodeTree } from "@/server/modules/catalog/service";
+import { isAppError } from "@/server/core/errors";
+import type { ArticleSummary, CodeTree, StructureNode } from "@/server/contracts/catalog";
+import { cn } from "@/lib/utils";
 
-const container: Variants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
+const DIFFICULTY: Record<string, { label: string; cls: string }> = {
+  simple: { label: "Simple", cls: "text-cat-emerald bg-cat-emerald/10" },
+  intermediaire: { label: "Intermédiaire", cls: "text-cat-sky bg-cat-sky/10" },
+  complexe: { label: "Complexe", cls: "text-cat-amber bg-cat-amber/10" },
+  piege: { label: "Piège", cls: "text-cat-rose bg-cat-rose/10" },
+};
+
+export default async function CodePage(props: { params: Promise<{ codeId: string }> }) {
+  const { codeId } = await props.params;
+
+  let tree: CodeTree;
+  try {
+    tree = await getCodeTree(codeId);
+  } catch (err) {
+    if (isAppError(err) && err.code === "NOT_FOUND") notFound();
+    throw err;
   }
-};
 
-const item: Variants = {
-  hidden: { opacity: 0, x: -20 },
-  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-};
+  const childrenOf = (parentId: string | null) =>
+    tree.nodes.filter((n) => n.parentId === parentId);
+  const articlesOf = (nodeId: string | null) =>
+    tree.articles.filter((a) => a.nodeId === nodeId);
 
-export default function CodePage(props: { params: Promise<{ codeId: string }> }) {
-  const params = use(props.params);
-  const code = MOCK_LEGAL_CODES.find((c) => c.id === params.codeId) || MOCK_LEGAL_CODES[0];
-  
-  // Dans un vrai cas, on filtrerait les articles par codeId
-  // Ici on mock avec l'unique article de démo + un factice pour montrer l'état
-  const articles = [
-    { ...MOCK_ARTICLE, status: "in_progress" },
-    { ...MOCK_ARTICLE, id: "art-1382", number: "1382", title: "Responsabilité civile", status: "completed" },
-    { ...MOCK_ARTICLE, id: "art-227", number: "227", title: "Atteintes à l'administration publique", status: "pending" }
-  ];
+  const looseArticles = articlesOf(null);
+  const roots = childrenOf(null);
+  const totalArticles = tree.articles.length;
 
   return (
-    <div className="space-y-8 pb-12">
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-6 pt-4">
-        <Button variant="outline" size="icon" asChild className="mt-1 bg-card/50 hover:bg-card">
-          <Link href="/library">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
+    <div className="space-y-8 pb-10">
+      <div className="flex items-start gap-4">
+        <Link
+          href="/library"
+          aria-label="Retour à la bibliothèque"
+          className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
         <div>
-          <Badge className="mb-3 bg-primary/20 text-primary border-none uppercase tracking-wider font-bold">Code Juridique</Badge>
-          <h1 className="text-4xl font-extrabold tracking-tight leading-tight">{code.name}</h1>
-          <p className="text-muted-foreground mt-3 text-lg max-w-3xl leading-relaxed">{code.description}</p>
+          <p className="text-sm font-bold uppercase tracking-widest text-primary">Codex</p>
+          <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight">{tree.code.name}</h1>
+          {tree.code.description && (
+            <p className="mt-2 max-w-3xl text-muted-foreground">{tree.code.description}</p>
+          )}
+          <p className="mt-3 text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{totalArticles}</span> article{totalArticles > 1 ? "s" : ""} au total
+          </p>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div variants={container} initial="hidden" animate="show" className="grid gap-4 mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Table des Matières</h2>
-          <span className="text-sm font-medium text-muted-foreground">3 articles disponibles</span>
+      {totalArticles === 0 && roots.length === 0 ? (
+        <div className="hall p-10 text-center text-muted-foreground">
+          Ce code n&apos;a pas encore de contenu publié.
         </div>
-
-        {articles.map((article) => (
-          <motion.div variants={item} key={article.id}>
-            <Link href={`/learn/${article.id}`}>
-              <Card className="hover:border-primary/50 hover:shadow-md transition-all group cursor-pointer bg-card/50 backdrop-blur-sm">
-                <CardContent className="p-0">
-                  <div className="flex items-center p-6 gap-6">
-                    <div className="flex-shrink-0">
-                      {article.status === "completed" && <CheckCircle2 className="w-8 h-8 text-primary" />}
-                      {article.status === "in_progress" && (
-                        <div className="relative">
-                          <Circle className="w-8 h-8 text-accent" />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-3 h-3 bg-accent rounded-full animate-pulse"></div>
-                          </div>
-                        </div>
-                      )}
-                      {article.status === "pending" && <Circle className="w-8 h-8 text-muted-foreground/30" />}
-                    </div>
-                    
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="font-bold border-border bg-background">Art. {article.number}</Badge>
-                        <CardTitle className="text-xl group-hover:text-primary transition-colors">{article.title}</CardTitle>
-                      </div>
-                      <CardDescription className="line-clamp-1 text-base mt-2">
-                        {article.official_text}
-                      </CardDescription>
-                    </div>
-
-                    <div className="flex-shrink-0 flex flex-col items-end gap-2">
-                      <div className="bg-primary/10 p-3 rounded-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                        <FileText className="h-5 w-5" />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          </motion.div>
-        ))}
-      </motion.div>
+      ) : (
+        <div className="space-y-6">
+          {looseArticles.length > 0 && (
+            <ul className="space-y-2.5">
+              {looseArticles.map((a) => (
+                <ArticleRow key={a.id} article={a} />
+              ))}
+            </ul>
+          )}
+          {roots.map((node) => (
+            <NodeBranch key={node.id} node={node} childrenOf={childrenOf} articlesOf={articlesOf} depth={0} />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function NodeBranch({
+  node,
+  childrenOf,
+  articlesOf,
+  depth,
+}: {
+  node: StructureNode;
+  childrenOf: (parentId: string | null) => StructureNode[];
+  articlesOf: (nodeId: string | null) => ArticleSummary[];
+  depth: number;
+}) {
+  const subNodes = childrenOf(node.id);
+  const articles = articlesOf(node.id);
+
+  return (
+    <section className={cn(depth > 0 && "border-l border-border pl-4")}>
+      <div className="mb-3 flex items-baseline gap-2">
+        <span className="font-mono text-xs font-semibold uppercase tracking-wider text-primary">
+          {node.type}{node.number ? ` ${node.number}` : ""}
+        </span>
+        <h2 className="font-display text-lg font-semibold">{node.label}</h2>
+      </div>
+
+      {articles.length > 0 && (
+        <ul className="mb-4 space-y-2.5">
+          {articles.map((a) => (
+            <ArticleRow key={a.id} article={a} />
+          ))}
+        </ul>
+      )}
+
+      {subNodes.length > 0 && (
+        <div className="space-y-5">
+          {subNodes.map((n) => (
+            <NodeBranch key={n.id} node={n} childrenOf={childrenOf} articlesOf={articlesOf} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ArticleRow({ article }: { article: ArticleSummary }) {
+  const diff = article.difficulty ? DIFFICULTY[article.difficulty] : null;
+
+  const inner = (
+    <div className="hall flex items-center gap-4 p-4 transition-all group-hover:border-primary/30">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-mono text-xs font-bold text-primary">
+        {article.number}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">{article.title ?? `Article ${article.number}`}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {diff && <span className={cn("rounded-full px-2 py-0.5 font-semibold", diff.cls)}>{diff.label}</span>}
+          {article.estimatedMinutes && <span>≈ {article.estimatedMinutes} min</span>}
+        </div>
+      </div>
+      {article.published ? (
+        <span className="inline-flex items-center gap-1 text-sm font-semibold text-action">
+          Étudier <ArrowRight className="h-4 w-4" />
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+          <Lock className="h-3.5 w-3.5" /> Bientôt
+        </span>
+      )}
+    </div>
+  );
+
+  if (!article.published) {
+    return <li aria-disabled className="block cursor-not-allowed opacity-70">{inner}</li>;
+  }
+  return (
+    <li>
+      <Link href={`/learn/${article.id}`} className="group block">
+        {inner}
+      </Link>
+    </li>
   );
 }
