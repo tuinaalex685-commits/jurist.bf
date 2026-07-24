@@ -33,29 +33,9 @@ begin
   );
 end $$;
 
--- ---------------------------------------------------------------------------
--- Rôles : helpers d'autorisation (utilisés par la RLS — cf. 0008)
--- SECURITY DEFINER pour lire profiles sans récursion RLS.
--- ---------------------------------------------------------------------------
-create or replace function current_role_level()
-returns int language sql stable security definer set search_path = public as $$
-  select case (select role from profiles where id = auth.uid())
-    when 'admin' then 3
-    when 'content_admin' then 2
-    when 'student' then 1
-    else 0
-  end;
-$$;
-
-create or replace function is_admin()
-returns boolean language sql stable security definer set search_path = public as $$
-  select coalesce((select role = 'admin' from profiles where id = auth.uid()), false);
-$$;
-
-create or replace function is_content_admin()
-returns boolean language sql stable set search_path = public as $$
-  select current_role_level() >= 2;
-$$;
+-- NB : les helpers de rôle (current_role_level / is_admin / is_content_admin) sont définis
+-- en 0008, APRÈS la création de `profiles` — une fonction LANGUAGE sql valide son corps
+-- (et ses références de tables) dès sa création.
 
 -- ---------------------------------------------------------------------------
 -- File d'attente unifiée : `jobs` (source de vérité / observabilité) + pgmq (livraison)
