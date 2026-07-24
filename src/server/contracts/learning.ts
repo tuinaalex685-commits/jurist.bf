@@ -1,43 +1,30 @@
 /**
- * Contrats du module Learning (le parcours). IMPORTANT : ce contrat **n'expose
- * jamais** les bonnes réponses ni les explications au client — la notation est
- * faite côté serveur (endpoint de tentative).
+ * Contrats du module Learning — moteur par ACTIVITÉS.
+ * Une phase est un conteneur d'activités. Le frontend reçoit un objet générique
+ * `{ type, prompt }` et le rend via un registre de renderers ; il ne connaît pas
+ * les activités à l'avance. AUCUNE solution/évaluation n'est exposée au client.
  */
-export type PhaseIntro = {
-  intro: string | null;
-  why: string | null;
-  protects: string | null;
-  outcomes: string[];
-};
-
-export type ParcoursSituation = {
+export type Activity = {
   id: string;
-  level: "simple" | "intermediaire" | "complexe" | "piege";
-  scenario: string;
-  context: string | null;
-  characters: { name: string; role: string }[];
-  keyFacts: string[];
-  question: string;
-  // pas de `answer` ni `explanation` : révélés par l'endpoint de tentative.
-};
-
-export type ParcoursComprehension = {
-  id: string;
+  phase: number;
+  position: number;
+  /** Format ouvert : 'discovery' | 'situation_choice' | 'select_elements' |
+   *  'ordering' | 'matching' | 'argued_answer' | 'cloze' | … (extensible sans migration). */
   type: string;
-  content: string;
+  objective: string | null;
+  difficulty: string | null;
+  weight: number;
+  /** Payload d'affichage, dépendant du type (public). */
+  prompt: Record<string, unknown>;
 };
 
-export type ParcoursMemorization = {
-  id: string;
-  clozeTemplate: string; // contient des marqueurs [BLANK_n]
-  blanksCount: number; // pas les mots corrects
+export type PhaseActivities = {
+  phase: number;
+  activities: Activity[];
 };
 
 export type Parcours = {
   article: { id: string; number: string; title: string | null };
   articleVersionId: string;
-  intro: PhaseIntro | null;
-  situations: ParcoursSituation[];
-  comprehension: ParcoursComprehension[];
-  memorization: ParcoursMemorization[];
+  phases: PhaseActivities[];
 };
