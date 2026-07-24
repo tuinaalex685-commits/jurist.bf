@@ -1,7 +1,63 @@
 import "server-only";
 import { createSupabaseServerClient } from "@/server/core/db/server";
+import { getSupabaseAdmin } from "@/server/core/db/admin";
 import { AppError } from "@/server/core/errors";
 import type { Activity, Parcours, PhaseActivities } from "@/server/contracts/learning";
+
+/** Données de correction (SECRÈTES) — lues via le client admin (jamais exposées au client). */
+export async function getGradingData(activityId: string): Promise<{
+  type: string;
+  solution: Record<string, unknown>;
+  evaluation: Record<string, unknown>;
+  feedback: Record<string, unknown>;
+}> {
+  const admin = getSupabaseAdmin();
+
+  const { data: act, error: aErr } = await admin
+    .from("activities")
+    .select("type,status")
+    .eq("id", activityId)
+    .maybeSingle();
+  if (aErr) throw AppError.dependency("Lecture de l'activité échouée", aErr);
+  if (!act || act.status !== "published") throw AppError.notFound("Activité introuvable");
+
+  const { data: sol } = await admin
+    .from("activity_solutions")
+    .select("solution,evaluation,feedback")
+    .eq("activity_id", activityId)
+    .maybeSingle();
+
+  return {
+    type: act.type,
+    solution: (sol?.solution ?? {}) as Record<string, unknown>,
+    evaluation: (sol?.evaluation ?? {}) as Record<string, unknown>,
+    feedback: (sol?.feedback ?? {}) as Record<string, unknown>,
+  };
+}
+
+/** Enregistre la tentative + recalcule la progression de phase (RPC transactionnelle, RLS). */
+export async function recordAttempt(
+  activityId: string,
+  response: unknown,
+  score: number,
+  passed: boolean,
+  detail: Record<string, unknown>,
+): Promise<{ phase: number; phase_score: number; phase_completed: boolean }> {
+  const sb = await createSupabaseServerClient();
+  const { data, error } = await sb.rpc("record_activity_attempt", {
+    p_activity_id: activityId,
+    p_response: response ?? {},
+    p_score: score,
+    p_passed: passed,
+    p_detail: detail ?? {},
+  });
+  if (error) {
+    if (/ACTIVITY_NOT_FOUND/.test(error.message)) throw AppError.notFound("Activité introuvable");
+    if (/UNAUTHENTICATED/.test(error.message)) throw AppError.unauthenticated();
+    throw AppError.dependency("Enregistrement de la tentative échoué", error);
+  }
+  return data as { phase: number; phase_score: number; phase_completed: boolean };
+}
 
 /**
  * Charge le parcours publié d'un article : ses activités groupées par phase.

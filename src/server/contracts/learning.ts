@@ -28,3 +28,12 @@ export type Parcours = {
   articleVersionId: string;
   phases: PhaseActivities[];
 };
+
+/** Résultat d'une tentative — révélé APRÈS soumission (feedback compris). */
+export type AttemptResult = {
+  score: number; // 0..1
+  passed: boolean;
+  feedback: string | null;
+  detail: Record<string, unknown>; // diagnostic (confusions, mots manquants…)
+  phase: { index: number; score: number; completed: boolean };
+};
