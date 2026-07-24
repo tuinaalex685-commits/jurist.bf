@@ -7,17 +7,22 @@ export interface RouteContext {
   log: Logger;
 }
 
-type RouteHandler = (req: Request, ctx: RouteContext) => Promise<ApiSuccess<unknown>>;
-
 /**
  * Enveloppe de Route Handler : la route reste **fine** (I/O only).
  * - injecte un `request_id` + logger corrélé,
  * - normalise la réponse succès `{ data, meta? }`,
- * - mappe toute erreur (AppError → HTTP) en `{ error: { code, message } }`.
+ * - mappe toute erreur (AppError → HTTP) en `{ error: { code, message } }`,
+ * - transmet le contexte de segment Next (`{ params }`) aux routes dynamiques.
  * Aucune logique métier ici — elle vit dans les services.
  */
-export function withRoute(handler: RouteHandler) {
-  return async (req: Request): Promise<Response> => {
+type RouteHandler<Segment> = (
+  req: Request,
+  ctx: RouteContext,
+  segment: Segment,
+) => Promise<ApiSuccess<unknown>>;
+
+export function withRoute<Segment = unknown>(handler: RouteHandler<Segment>) {
+  return async (req: Request, segment: Segment): Promise<Response> => {
     const requestId = req.headers.get("x-request-id") ?? crypto.randomUUID();
     const log = logger.child({
       requestId,
@@ -32,7 +37,7 @@ export function withRoute(handler: RouteHandler) {
     });
 
     try {
-      const result = await handler(req, { requestId, log });
+      const result = await handler(req, { requestId, log }, segment);
       return Response.json(result, { headers: { "x-request-id": requestId } });
     } catch (err) {
       const { status, body } = toErrorResponse(err);
