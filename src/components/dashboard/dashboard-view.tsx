@@ -171,16 +171,27 @@ export function DashboardView({ data }: { data: DashboardData }) {
           )}
         </motion.section>
 
-        {/* Révisions (SRS — à venir en B5) */}
+        {/* Révisions */}
         <motion.section variants={item} className="hall flex items-center justify-between p-6 lg:col-span-12">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-6">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-cat-amber/10 ring-1 ring-cat-amber/25"><History className="h-5 w-5 text-cat-amber" /></span>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Révisions</p>
-              <p className="text-sm text-muted-foreground">La répétition espacée arrive bientôt — vos articles à revoir apparaîtront ici.</p>
+              {data.revisions.today > 0 ? (
+                <p className="text-sm"><span className="font-semibold text-cat-amber">{data.revisions.today}</span> à réviser aujourd&apos;hui</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Tout est à jour pour aujourd&apos;hui.</p>
+              )}
+            </div>
+            <div className="hidden gap-4 text-xs text-muted-foreground sm:flex">
+              <span>Demain <span className="font-semibold text-foreground">{data.revisions.tomorrow}</span></span>
+              <span>Semaine <span className="font-semibold text-foreground">{data.revisions.week}</span></span>
             </div>
           </div>
-          <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">Bientôt</span>
+          <Link href="/revisions" className={cn("inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition-colors",
+            data.revisions.today > 0 ? "bg-cat-amber text-white hover:bg-cat-amber/90" : "bg-muted text-muted-foreground hover:bg-muted/70")}>
+            Séance <ArrowRight className="h-4 w-4" />
+          </Link>
         </motion.section>
       </motion.div>
     </div>

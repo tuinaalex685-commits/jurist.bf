@@ -1,5 +1,6 @@
 import "server-only";
 import * as repo from "./repository";
+import { getCounts as getSrsCounts } from "@/server/modules/srs/service";
 import type { SessionUser } from "@/server/modules/auth/session";
 import type { DashboardData, DashboardResume } from "@/server/contracts/me";
 
@@ -8,7 +9,7 @@ const PHASE_NAMES = ["Découverte", "Reconnaissance", "Compréhension", "Mémori
 export async function getDashboard(user: SessionUser): Promise<DashboardData> {
   const sb = await repo.client();
 
-  const [stats, ranks, displayName, seals, weaknesses, strengths, latest] = await Promise.all([
+  const [stats, ranks, displayName, seals, weaknesses, strengths, latest, revisions] = await Promise.all([
     repo.getStats(sb),
     repo.getRanks(sb),
     repo.getProfileName(sb, user.email?.split("@")[0] ?? "Juriste"),
@@ -16,6 +17,7 @@ export async function getDashboard(user: SessionUser): Promise<DashboardData> {
     repo.getWeaknesses(sb),
     repo.getStrengths(sb),
     repo.getLatestTouchedArticle(sb),
+    getSrsCounts(),
   ]);
 
   const current = ranks.find((r) => r.level === stats.rank_level) ?? { level: 1, name: "Néophyte", xp_threshold: 0 };
@@ -63,8 +65,8 @@ export async function getDashboard(user: SessionUser): Promise<DashboardData> {
     seals,
     weaknesses,
     strengths,
-    // SRS (B5) et Examens (B6) : valeurs neutres pour l'instant.
-    revisions: { today: 0, tomorrow: 0, week: 0 },
+    revisions,
+    // Examens (B6) : valeur neutre pour l'instant.
     unlock: null,
   };
 }
