@@ -1,18 +1,21 @@
-import { MOCK_ARTICLE, MOCK_NOTION, MOCK_SITUATIONS, MOCK_COMPREHENSION, MOCK_MEMORIZATION } from "@/lib/mock-data";
+import { notFound } from "next/navigation";
+import { getParcours } from "@/server/modules/learning/service";
+import { isAppError } from "@/server/core/errors";
 import { LearningEngine } from "@/components/learn/LearningEngine";
+import type { Parcours } from "@/server/contracts/learning";
+
+export const dynamic = "force-dynamic";
 
 export default async function LearnPage(props: { params: Promise<{ articleId: string }> }) {
-  // Dans le monde réel, on chargerait l'article depuis Supabase à partir de articleId.
-  // MVP frontend : données mock.
-  await props.params;
+  const { articleId } = await props.params;
 
-  return (
-    <LearningEngine
-      article={MOCK_ARTICLE}
-      notion={MOCK_NOTION}
-      situations={MOCK_SITUATIONS}
-      comprehension={MOCK_COMPREHENSION}
-      memorization={MOCK_MEMORIZATION}
-    />
-  );
+  let parcours: Parcours;
+  try {
+    parcours = await getParcours(articleId);
+  } catch (err) {
+    if (isAppError(err) && err.code === "NOT_FOUND") notFound();
+    throw err;
+  }
+
+  return <LearningEngine parcours={parcours} />;
 }
