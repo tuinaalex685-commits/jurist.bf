@@ -29,6 +29,15 @@ export type Parcours = {
   phases: PhaseActivities[];
 };
 
+/** Récompense de maîtrise (décernée quand toutes les phases sont validées). */
+export type MasteryReward = {
+  mastered: boolean;
+  isNew: boolean; // true seulement au moment de l'obtention
+  xpGained: number;
+  xpTotal: number;
+  rankLevel: number;
+};
+
 /** Résultat d'une tentative — révélé APRÈS soumission (feedback compris). */
 export type AttemptResult = {
   score: number; // 0..1
@@ -36,4 +45,5 @@ export type AttemptResult = {
   feedback: string | null;
   detail: Record<string, unknown>; // diagnostic (confusions, mots manquants…)
   phase: { index: number; score: number; completed: boolean };
+  mastery: MasteryReward | null; // présent si la phase vient de compléter l'article
 };

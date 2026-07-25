@@ -38,11 +38,27 @@ export async function submitAttempt(activityId: string, response: unknown): Prom
 
   const phase = await repo.recordAttempt(activityId, response, out.score, out.passed, out.detail);
 
+  // Si la phase vient d'être validée, tenter d'attribuer la maîtrise de l'article (idempotent).
+  let mastery: AttemptResult["mastery"] = null;
+  if (phase.phase_completed) {
+    const m = await repo.awardMasteryIfComplete(grading.articleVersionId);
+    if (m.mastered) {
+      mastery = {
+        mastered: true,
+        isNew: m.new === true,
+        xpGained: m.xp_gained ?? 0,
+        xpTotal: m.xp_total ?? 0,
+        rankLevel: m.rank_level ?? 1,
+      };
+    }
+  }
+
   return {
     score: out.score,
     passed: out.passed,
     feedback: feedback ?? null,
     detail: out.detail,
     phase: { index: phase.phase, score: phase.phase_score, completed: phase.phase_completed },
+    mastery,
   };
 }

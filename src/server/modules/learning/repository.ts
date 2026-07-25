@@ -7,6 +7,7 @@ import type { Activity, Parcours, PhaseActivities } from "@/server/contracts/lea
 /** Données de correction (SECRÈTES) — lues via le client admin (jamais exposées au client). */
 export async function getGradingData(activityId: string): Promise<{
   type: string;
+  articleVersionId: string;
   solution: Record<string, unknown>;
   evaluation: Record<string, unknown>;
   feedback: Record<string, unknown>;
@@ -15,7 +16,7 @@ export async function getGradingData(activityId: string): Promise<{
 
   const { data: act, error: aErr } = await admin
     .from("activities")
-    .select("type,status")
+    .select("type,status,article_version_id")
     .eq("id", activityId)
     .maybeSingle();
   if (aErr) throw AppError.dependency("Lecture de l'activité échouée", aErr);
@@ -29,10 +30,26 @@ export async function getGradingData(activityId: string): Promise<{
 
   return {
     type: act.type,
+    articleVersionId: act.article_version_id as string,
     solution: (sol?.solution ?? {}) as Record<string, unknown>,
     evaluation: (sol?.evaluation ?? {}) as Record<string, unknown>,
     feedback: (sol?.feedback ?? {}) as Record<string, unknown>,
   };
+}
+
+/** Décerne la maîtrise si toutes les phases sont validées (idempotent, RLS). */
+export async function awardMasteryIfComplete(articleVersionId: string): Promise<{
+  mastered: boolean;
+  new?: boolean;
+  already?: boolean;
+  xp_gained?: number;
+  xp_total?: number;
+  rank_level?: number;
+}> {
+  const sb = await createSupabaseServerClient();
+  const { data, error } = await sb.rpc("award_article_mastery", { p_version: articleVersionId });
+  if (error) throw AppError.dependency("Attribution de la maîtrise échouée", error);
+  return data as { mastered: boolean; new?: boolean; xp_gained?: number; xp_total?: number; rank_level?: number };
 }
 
 /** Enregistre la tentative + recalcule la progression de phase (RPC transactionnelle, RLS). */
