@@ -51,6 +51,25 @@ jobs:
             exit 0
           fi
 
+          # NORMALISATION DES SECRETS — ils sont saisis à la main dans l'interface
+          # GitHub : un retour à la ligne ou une espace collés par mégarde suffisent
+          # à produire `curl: (3) URL rejected: Malformed input to a URL function`,
+          # ou un en-tête d'authentification invalide. On ne fait pas confiance au
+          # formatage exact d'une valeur recopiée.
+          APP_URL="$(printf '%s' "${APP_URL}" | tr -d '[:space:]' | sed 's:/*$::')"
+          WORKER_SECRET="$(printf '%s' "${WORKER_SECRET}" | tr -d '[:space:]')"
+
+          case "${APP_URL}" in
+            https://*|http://*) ;;
+            *)
+              echo "::error::APP_URL doit commencer par https:// — valeur reçue : « ${APP_URL} »"
+              echo "❌ APP_URL malformée" >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+              ;;
+          esac
+
+          echo "Cible : ${APP_URL}/api/internal/worker"
+
           total_claimed=0
           rounds=0
 
@@ -80,7 +99,7 @@ jobs:
                 ;;
               *)
                 echo "::error::Worker injoignable ou en erreur (HTTP ${status})."
-                head -c 500 response.json || true
+                [ -f response.json ] && head -c 500 response.json
                 echo "❌ Worker en erreur (HTTP ${status}) après ${i} tour(s)" >> "$GITHUB_STEP_SUMMARY"
                 exit 1
                 ;;
