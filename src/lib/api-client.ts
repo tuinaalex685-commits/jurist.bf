@@ -15,10 +15,20 @@ export async function apiGet<T>(path: string): Promise<T> {
   return unwrap<T>(await fetch(path, { headers: { accept: "application/json" } }));
 }
 
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return unwrap<T>(
     await fetch(path, {
       method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    }),
+  );
+}
+
+export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  return unwrap<T>(
+    await fetch(path, {
+      method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     }),

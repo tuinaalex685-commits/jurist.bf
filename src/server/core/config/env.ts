@@ -26,6 +26,9 @@ const EnvSchema = z.object({
 
   // Worker asynchrone (protège /api/internal/worker)
   WORKER_SECRET: z.string().min(1).optional(),
+  // Vercel Cron : si cette variable est définie, Vercel envoie
+  // `Authorization: Bearer <CRON_SECRET>` sur chaque déclenchement planifié.
+  CRON_SECRET: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
