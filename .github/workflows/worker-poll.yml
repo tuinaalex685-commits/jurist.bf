@@ -1,18 +1,22 @@
-# Déclenchement fréquent du worker, gratuit — alternative au cron Vercel.
+# Traitement de la file de jobs — relais gratuit, indépendant du plan Vercel.
 #
-# POURQUOI : le plan Hobby de Vercel n'autorise qu'un déclenchement de cron par
-# jour (voir vercel.json). Ce workflow appelle la même route toutes les 5 minutes
-# (cadence minimale de GitHub Actions), ce qui suffit à traiter la file de
-# génération IA dans un délai raisonnable.
+# POURQUOI CE FICHIER : le cron Vercel est déclaré en quotidien dans vercel.json
+# (seule cadence autorisée par le plan Hobby, vers lequel ce projet reviendra).
+# Ce workflow appelle la même route toutes les 5 minutes — cadence minimale de
+# GitHub Actions — et reste valable quel que soit le plan Vercel.
 #
-# ACTIVATION : définir deux secrets dans le dépôt
+# ACTIVATION : deux secrets de dépôt
 #   Settings → Secrets and variables → Actions → New repository secret
 #     APP_URL        ex. https://jurist-bf.vercel.app   (sans barre oblique finale)
-#     WORKER_SECRET  la même valeur que la variable WORKER_SECRET côté Vercel
-# Tant qu'ils ne sont pas définis, le workflow s'arrête proprement sans échouer.
+#     WORKER_SECRET  la MÊME valeur que la variable WORKER_SECRET côté Vercel
+# Tant qu'ils sont absents, le workflow se termine proprement sans échouer.
 #
-# NB : GitHub désactive les workflows planifiés d'un dépôt resté inactif 60 jours,
-# et les déclenchements peuvent être retardés en cas de charge sur la plateforme.
+# LIMITES CONNUES (documentées, pas subies) :
+#   - GitHub désactive les workflows planifiés d'un dépôt inactif depuis 60 jours.
+#   - Les déclenchements planifiés peuvent être retardés en cas de charge GitHub.
+#   - Si ce relais s'arrête, le moniteur applicatif lève l'alerte `worker_stalled`
+#     (file qui n'avance plus) : la panne du relais est donc visible dans le cockpit,
+#     pas seulement dans l'onglet Actions.
 
 name: Worker – traitement de la file
 
@@ -21,38 +25,87 @@ on:
     - cron: "*/5 * * * *"
   workflow_dispatch: # déclenchement manuel depuis l'onglet Actions
 
-# Un seul passage à la fois : deux workers concurrents réclameraient des jobs
-# en parallèle (le SQL le supporte, mais inutile de doubler la dépense).
+# Jamais deux passages simultanés : inutile de doubler les appels au modèle.
 concurrency:
   group: worker-poll
   cancel-in-progress: false
 
 jobs:
-  poll:
+  drain:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - name: Appeler le worker
+      - name: Vider la file
         env:
           APP_URL: ${{ secrets.APP_URL }}
           WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
+          # Chaque appel traite un lot borné côté serveur ; on répète tant qu'il
+          # reste du travail, plutôt que d'attendre 5 min entre deux lots.
+          MAX_ROUNDS: "8"
         run: |
-          if [ -z "$APP_URL" ] || [ -z "$WORKER_SECRET" ]; then
-            echo "APP_URL ou WORKER_SECRET absent — déclenchement ignoré."
-            echo "Définissez ces secrets pour activer le worker."
+          set -uo pipefail
+
+          if [ -z "${APP_URL}" ] || [ -z "${WORKER_SECRET}" ]; then
+            echo "APP_URL ou WORKER_SECRET absent — relais inactif, rien à faire."
+            echo "Définissez ces secrets pour activer le traitement de la file." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
-          status=$(curl -sS -o response.json -w '%{http_code}' \
-            -X POST "$APP_URL/api/internal/worker" \
-            -H "x-worker-secret: $WORKER_SECRET" \
-            --max-time 120)
+          total_claimed=0
+          rounds=0
 
-          echo "HTTP $status"
-          cat response.json
+          call_worker() {
+            # --retry couvre les aléas réseau et les 5xx transitoires (déploiement
+            # en cours, démarrage à froid) sans faire échouer tout le passage.
+            curl -sS -o response.json -w '%{http_code}' \
+              --retry 3 --retry-delay 5 --retry-connrefused --retry-all-errors \
+              --max-time 90 \
+              -X POST "${APP_URL}/api/internal/worker" \
+              -H "x-worker-secret: ${WORKER_SECRET}" \
+              -H 'content-type: application/json'
+          }
 
-          # 403 = secret désaccordé entre GitHub et Vercel ; 5xx = panne applicative.
-          if [ "$status" != "200" ]; then
-            echo "::error::Le worker a répondu $status"
-            exit 1
-          fi
+          for i in $(seq 1 "${MAX_ROUNDS}"); do
+            rounds=$i
+            status=$(call_worker) || status="000"
+
+            case "${status}" in
+              200) ;;
+              401|403)
+                # Secret désaccordé entre GitHub et Vercel : ça ne se répare pas
+                # tout seul, on échoue franchement pour que ce soit visible.
+                echo "::error::Worker refusé (HTTP ${status}) — WORKER_SECRET ne correspond pas à celui de Vercel."
+                echo "❌ Authentification refusée (HTTP ${status})" >> "$GITHUB_STEP_SUMMARY"
+                exit 1
+                ;;
+              *)
+                echo "::error::Worker injoignable ou en erreur (HTTP ${status})."
+                head -c 500 response.json || true
+                echo "❌ Worker en erreur (HTTP ${status}) après ${i} tour(s)" >> "$GITHUB_STEP_SUMMARY"
+                exit 1
+                ;;
+            esac
+
+            claimed=$(jq -r '.data.claimed // 0' response.json 2>/dev/null || echo 0)
+            errors=$(jq -r '[.data.results[]? | select(.status=="error")] | length' response.json 2>/dev/null || echo 0)
+            total_claimed=$((total_claimed + claimed))
+
+            echo "tour ${i} : ${claimed} job(s) réclamé(s), ${errors} en erreur"
+
+            # File vide → inutile de continuer à marteler.
+            if [ "${claimed}" -eq 0 ]; then
+              break
+            fi
+          done
+
+          {
+            echo "### Traitement de la file"
+            echo ""
+            echo "- Tours effectués : **${rounds}** / ${MAX_ROUNDS}"
+            echo "- Jobs traités : **${total_claimed}**"
+            if [ "${total_claimed}" -eq 0 ]; then
+              echo "- File vide — rien à traiter."
+            elif [ "${rounds}" -eq "${MAX_ROUNDS}" ]; then
+              echo "- ⚠️ Plafond de tours atteint : il reste probablement du travail, le prochain passage poursuivra."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

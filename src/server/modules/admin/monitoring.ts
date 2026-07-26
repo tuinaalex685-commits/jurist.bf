@@ -48,6 +48,12 @@ export async function evaluateSystemHealth(): Promise<HealthReport> {
   }
 
   // --- Règle 2 : worker à l'arrêt ------------------------------------------
+  // LIMITE ASSUMÉE : ce moniteur s'exécute DANS le worker. Si le relais GitHub
+  // meurt complètement, plus rien ne l'évalue et l'alerte ne peut pas naître.
+  // Deux filets rattrapent ce cas : (1) le cron Vercel quotidien déclenche le
+  // worker, donc le moniteur, sous 24 h ; (2) la vue d'ensemble du cockpit
+  // calcule l'ancienneté directement depuis `jobs` et affiche un bandeau dès la
+  // première visite d'un admin, sans dépendre d'une alerte enregistrée.
   const oldest = num(jobs.oldestPendingAgeS);
   if (oldest > STALLED_QUEUE_S) {
     await repo.raiseAlert({
