@@ -12,7 +12,7 @@ export type JobType =
 
 export interface JobPayloads {
   "content.parse": { sourceDocumentId: string };
-  "ai.generate": { articleVersionId: string; contentType: string; promptMasterVersion: number };
+  "ai.generate": { articleId: string; requestedBy?: string; batchId?: string };
   "notify.send": { userId: string; type: string; data?: Record<string, unknown> };
   "analytics.rollup": { name: string };
   "stats.recompute": { userId: string };
