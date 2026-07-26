@@ -1,0 +1,58 @@
+# Déclenchement fréquent du worker, gratuit — alternative au cron Vercel.
+#
+# POURQUOI : le plan Hobby de Vercel n'autorise qu'un déclenchement de cron par
+# jour (voir vercel.json). Ce workflow appelle la même route toutes les 5 minutes
+# (cadence minimale de GitHub Actions), ce qui suffit à traiter la file de
+# génération IA dans un délai raisonnable.
+#
+# ACTIVATION : définir deux secrets dans le dépôt
+#   Settings → Secrets and variables → Actions → New repository secret
+#     APP_URL        ex. https://jurist-bf.vercel.app   (sans barre oblique finale)
+#     WORKER_SECRET  la même valeur que la variable WORKER_SECRET côté Vercel
+# Tant qu'ils ne sont pas définis, le workflow s'arrête proprement sans échouer.
+#
+# NB : GitHub désactive les workflows planifiés d'un dépôt resté inactif 60 jours,
+# et les déclenchements peuvent être retardés en cas de charge sur la plateforme.
+
+name: Worker – traitement de la file
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: # déclenchement manuel depuis l'onglet Actions
+
+# Un seul passage à la fois : deux workers concurrents réclameraient des jobs
+# en parallèle (le SQL le supporte, mais inutile de doubler la dépense).
+concurrency:
+  group: worker-poll
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Appeler le worker
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$WORKER_SECRET" ]; then
+            echo "APP_URL ou WORKER_SECRET absent — déclenchement ignoré."
+            echo "Définissez ces secrets pour activer le worker."
+            exit 0
+          fi
+
+          status=$(curl -sS -o response.json -w '%{http_code}' \
+            -X POST "$APP_URL/api/internal/worker" \
+            -H "x-worker-secret: $WORKER_SECRET" \
+            --max-time 120)
+
+          echo "HTTP $status"
+          cat response.json
+
+          # 403 = secret désaccordé entre GitHub et Vercel ; 5xx = panne applicative.
+          if [ "$status" != "200" ]; then
+            echo "::error::Le worker a répondu $status"
+            exit 1
+          fi
