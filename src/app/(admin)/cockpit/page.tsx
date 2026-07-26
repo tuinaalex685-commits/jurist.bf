@@ -113,7 +113,7 @@ export default async function CockpitOverviewPage() {
             points={series.map((p) => ({ day: p.day, value: p.activeUsers }))}
             label="Utilisateurs actifs"
             tone="emerald"
-            format={formatInt}
+            format="int"
           />
         </section>
 
@@ -123,7 +123,7 @@ export default async function CockpitOverviewPage() {
             points={series.map((p) => ({ day: p.day, value: p.aiCostUsd }))}
             label="Coût IA quotidien"
             tone="indigo"
-            format={formatUsd}
+            format="usd"
           />
         </section>
 
@@ -133,7 +133,7 @@ export default async function CockpitOverviewPage() {
             points={series.map((p) => ({ day: p.day, value: p.newUsers }))}
             label="Nouveaux inscrits"
             tone="rose"
-            format={formatInt}
+            format="int"
           />
         </section>
 
@@ -143,7 +143,7 @@ export default async function CockpitOverviewPage() {
             points={series.map((p) => ({ day: p.day, value: p.seals }))}
             label="Sceaux décernés"
             tone="sky"
-            format={formatInt}
+            format="int"
           />
         </section>
       </div>

@@ -131,6 +131,21 @@ export function formatDayLong(iso: string): string {
   return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(d);
 }
 
+/**
+ * Formats disponibles pour les graphiques, désignés par un NOM et non par une
+ * fonction : les composants de graphique sont des composants client, et une
+ * fonction n'est pas sérialisable à travers la frontière serveur → client.
+ * On passe donc `format="usd"`, jamais `format={formatUsd}`.
+ */
+export type FormatKind = "int" | "usd" | "compact" | "percent";
+
+export const FORMATTERS: Record<FormatKind, (v: number) => string> = {
+  int: (v) => formatInt(v),
+  usd: (v) => formatUsd(v),
+  compact: (v) => formatCompact(v),
+  percent: (v) => formatPercent(v),
+};
+
 /** Durée en secondes → « 3 min », « 2 h 10 », « 4 j » (âge de file, séries). */
 export function formatDuration(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)} s`;

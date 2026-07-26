@@ -57,7 +57,7 @@ export default async function ProfitabilityPage() {
             points={series.map((p) => ({ day: p.day, value: p.newUsers }))}
             label="Nouveaux inscrits"
             tone="emerald"
-            format={formatInt}
+            format="int"
           />
         </section>
 
@@ -67,7 +67,7 @@ export default async function ProfitabilityPage() {
             points={series.map((p) => ({ day: p.day, value: p.aiCostUsd }))}
             label="Coût IA quotidien"
             tone="indigo"
-            format={formatUsd}
+            format="usd"
           />
         </section>
       </div>

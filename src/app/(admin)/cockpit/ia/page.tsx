@@ -72,7 +72,7 @@ export default async function AiCockpitPage() {
             points={series.map((p) => ({ day: p.day, value: p.aiCostUsd }))}
             label="Coût IA quotidien"
             tone="indigo"
-            format={formatUsd}
+            format="usd"
           />
         </section>
 

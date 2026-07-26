@@ -4,13 +4,14 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import {
   DEFAULT_BOX,
+  FORMATTERS,
   areaPath,
   buildScales,
-  formatCompact,
   formatDayLong,
   formatDayShort,
   linePath,
   nearestIndex,
+  type FormatKind,
 } from "./geometry";
 import { SERIES_FILL, SERIES_STROKE, SERIES_TEXT, type SeriesTone } from "./series";
 
@@ -24,8 +25,8 @@ interface TrendChartProps {
   /** Nomme la série : un graphique mono-série n'a pas besoin de légende, le titre suffit. */
   label: string;
   tone?: SeriesTone;
-  /** Formatage des valeurs (axe, infobulle). Par défaut : entier compact. */
-  format?: (v: number) => string;
+  /** NOM du format (pas la fonction : elle ne traverserait pas la frontière serveur → client). */
+  format?: FormatKind;
   className?: string;
 }
 
@@ -36,10 +37,11 @@ interface TrendChartProps {
  * grandeurs d'unités différentes (utilisateurs, $, décomptes) — les superposer
  * exigerait deux axes Y, ce qui rend un graphique illisible.
  */
-export function TrendChart({ points, label, tone = "emerald", format = formatCompact, className }: TrendChartProps) {
+export function TrendChart({ points, label, tone = "emerald", format = "compact", className }: TrendChartProps) {
   const [hover, setHover] = React.useState<number | null>(null);
   const svgRef = React.useRef<SVGSVGElement>(null);
   const box = DEFAULT_BOX;
+  const fmt = FORMATTERS[format];
 
   const values = React.useMemo(() => points.map((p) => p.value), [points]);
   const scales = React.useMemo(
@@ -99,7 +101,7 @@ export function TrendChart({ points, label, tone = "emerald", format = formatCom
               textAnchor="end"
               className="fill-muted-foreground font-mono text-[11px]"
             >
-              {format(tick)}
+              {fmt(tick)}
             </text>
           </g>
         ))}
@@ -157,7 +159,7 @@ export function TrendChart({ points, label, tone = "emerald", format = formatCom
           aria-live="polite"
         >
           <p className="whitespace-nowrap text-[11px] text-muted-foreground">{formatDayLong(active.day)}</p>
-          <p className="whitespace-nowrap font-mono text-sm font-semibold text-foreground">{format(active.value)}</p>
+          <p className="whitespace-nowrap font-mono text-sm font-semibold text-foreground">{fmt(active.value)}</p>
         </div>
       )}
 
@@ -175,7 +177,7 @@ export function TrendChart({ points, label, tone = "emerald", format = formatCom
             {points.map((p) => (
               <tr key={p.day}>
                 <th scope="row">{formatDayLong(p.day)}</th>
-                <td>{format(p.value)}</td>
+                <td>{fmt(p.value)}</td>
               </tr>
             ))}
           </tbody>

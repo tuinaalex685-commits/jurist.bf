@@ -2,7 +2,15 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { DEFAULT_BOX, bandCenter, buildScales, formatCompact, formatDayLong, formatDayShort } from "./geometry";
+import {
+  DEFAULT_BOX,
+  FORMATTERS,
+  bandCenter,
+  buildScales,
+  formatDayLong,
+  formatDayShort,
+  type FormatKind,
+} from "./geometry";
 import { SERIES_FILL, type SeriesTone } from "./series";
 import { EmptyPlot } from "./trend-chart";
 
@@ -15,14 +23,16 @@ interface BarChartProps {
   points: BarPoint[];
   label: string;
   tone?: SeriesTone;
-  format?: (v: number) => string;
+  /** NOM du format (pas la fonction : elle ne traverserait pas la frontière serveur → client). */
+  format?: FormatKind;
   className?: string;
 }
 
 /** Barres journalières (volumes discrets : coût quotidien, générations, examens). */
-export function BarChart({ points, label, tone = "indigo", format = formatCompact, className }: BarChartProps) {
+export function BarChart({ points, label, tone = "indigo", format = "compact", className }: BarChartProps) {
   const [hover, setHover] = React.useState<number | null>(null);
   const box = DEFAULT_BOX;
+  const fmt = FORMATTERS[format];
 
   const values = React.useMemo(() => points.map((p) => p.value), [points]);
   const scales = React.useMemo(() => buildScales(values.length, Math.max(...values, 0), box), [values, box]);
@@ -58,7 +68,7 @@ export function BarChart({ points, label, tone = "indigo", format = formatCompac
               textAnchor="end"
               className="fill-muted-foreground font-mono text-[11px]"
             >
-              {format(tick)}
+              {fmt(tick)}
             </text>
           </g>
         ))}
@@ -113,7 +123,7 @@ export function BarChart({ points, label, tone = "indigo", format = formatCompac
           aria-live="polite"
         >
           <p className="whitespace-nowrap text-[11px] text-muted-foreground">{formatDayLong(active.day)}</p>
-          <p className="whitespace-nowrap font-mono text-sm font-semibold text-foreground">{format(active.value)}</p>
+          <p className="whitespace-nowrap font-mono text-sm font-semibold text-foreground">{fmt(active.value)}</p>
         </div>
       )}
 
@@ -130,7 +140,7 @@ export function BarChart({ points, label, tone = "indigo", format = formatCompac
             {points.map((p) => (
               <tr key={p.day}>
                 <th scope="row">{formatDayLong(p.day)}</th>
-                <td>{format(p.value)}</td>
+                <td>{fmt(p.value)}</td>
               </tr>
             ))}
           </tbody>
