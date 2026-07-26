@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { uuid } from "@/server/core/validation";
 
 export const CreatePromptInput = z.object({
   key: z.string().min(1).default("master"),
@@ -11,8 +12,8 @@ export type CreatePromptInput = z.infer<typeof CreatePromptInput>;
 
 export const GenerateRequestInput = z.object({
   scope: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("article"), articleId: z.string().uuid() }),
-    z.object({ kind: z.literal("code"), codeId: z.string().uuid() }),
+    z.object({ kind: z.literal("article"), articleId: uuid() }),
+    z.object({ kind: z.literal("code"), codeId: uuid() }),
   ]),
 });
 export type GenerateRequestInput = z.infer<typeof GenerateRequestInput>;
@@ -22,7 +23,7 @@ export const CreateDocumentInput = z.object({
   mime: z.string().min(1),
   storagePath: z.string().min(1),
   checksum: z.string().min(1),
-  codeId: z.string().uuid().optional(),
+  codeId: uuid().optional(),
 });
 export type CreateDocumentInput = z.infer<typeof CreateDocumentInput>;
 
