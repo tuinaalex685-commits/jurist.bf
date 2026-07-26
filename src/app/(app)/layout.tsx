@@ -10,5 +10,5 @@ import { getSessionUser } from "@/server/modules/auth/session";
 export default async function AppGroupLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  return <AppLayout>{children}</AppLayout>;
+  return <AppLayout role={user.role}>{children}</AppLayout>;
 }

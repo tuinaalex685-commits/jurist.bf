@@ -1,10 +1,11 @@
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
+import type { UserRole } from "@/server/modules/auth/session";
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+export function AppLayout({ role, children }: { role: UserRole; children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar />
+      <Sidebar role={role} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto">

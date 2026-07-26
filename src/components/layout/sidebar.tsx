@@ -2,24 +2,29 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Library, History, GraduationCap, TrendingUp, UserRound, Flame } from "lucide-react";
+import { LayoutDashboard, Library, History, GraduationCap, Flame, ShieldCheck } from "lucide-react";
 import { RankInsignia } from "@/components/academy/RankInsignia";
 import { MOCK_DASHBOARD } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import type { UserRole } from "@/server/modules/auth/session";
 
+/**
+ * Ne référencer QUE des pages qui existent : un lien mort est pire qu'un lien
+ * absent. « Progression » et « Profil » ont été retirés tant que leurs pages
+ * ne sont pas construites (elles renvoyaient un 404).
+ */
 const navigation = [
   { name: "Tableau de bord", href: "/", icon: LayoutDashboard },
   { name: "Bibliothèque", href: "/library", icon: Library },
   { name: "Révisions", href: "/revisions", icon: History },
   { name: "Examens", href: "/synthese", icon: GraduationCap },
-  { name: "Progression", href: "/progression", icon: TrendingUp },
-  { name: "Profil", href: "/profil", icon: UserRound },
 ];
 
-export function Sidebar() {
+export function Sidebar({ role }: { role: UserRole }) {
   const pathname = usePathname();
   const { user } = MOCK_DASHBOARD;
   const rankPct = Math.round((user.xpIntoRank / user.xpForNextRank) * 100);
+  const isStaff = role === "admin" || role === "content_admin";
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card md:flex">
@@ -68,6 +73,28 @@ export function Sidebar() {
             );
           })}
         </ul>
+
+        {/* Accès au cockpit — visible seulement pour l'équipe, jamais pour un
+            étudiant. La vraie garde reste côté serveur (layout + routes API) :
+            masquer un lien n'est pas une sécurité, seulement de la clarté. */}
+        {isStaff && (
+          <>
+            <p className="mb-2 mt-6 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+              Administration
+            </p>
+            <ul>
+              <li>
+                <Link
+                  href="/cockpit"
+                  className="group relative flex items-center gap-3 rounded-xl border border-gold/30 bg-gold/5 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-gold/10"
+                >
+                  <ShieldCheck className="h-[18px] w-[18px] text-gold" />
+                  Cockpit
+                </Link>
+              </li>
+            </ul>
+          </>
+        )}
       </nav>
 
       {/* Carte de rang */}
