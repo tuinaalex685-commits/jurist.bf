@@ -1,17 +1,41 @@
 import "server-only";
 import * as repo from "./repository";
 import { getCounts as getSrsCounts } from "@/server/modules/srs/service";
+import { getCache } from "@/server/core/cache/cache";
+import { cacheKeys } from "@/server/core/cache/keys";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SessionUser } from "@/server/modules/auth/session";
 import type { DashboardData, DashboardResume } from "@/server/contracts/me";
 
 const PHASE_NAMES = ["Découverte", "Reconnaissance", "Compréhension", "Mémorisation", "Maîtrise"];
+
+/** Les rangs ne changent qu'à une migration près : TTL long assumé. */
+const RANKS_TTL = 3600;
+
+type Rank = { level: number; name: string; xp_threshold: number };
+
+/**
+ * Référentiel des rangs, mis en cache globalement : il est identique pour tous
+ * les utilisateurs et relu à CHAQUE affichage du tableau de bord. À quelques
+ * milliers d'utilisateurs, c'est autant de requêtes inutiles sur la base.
+ */
+async function getRanksCached(sb: SupabaseClient): Promise<Rank[]> {
+  const cache = getCache();
+  const key = cacheKeys.ranks();
+  const hit = await cache.get<Rank[]>(key);
+  if (hit) return hit;
+
+  const data = await repo.getRanks(sb);
+  if (data.length) await cache.set(key, data, RANKS_TTL);
+  return data;
+}
 
 export async function getDashboard(user: SessionUser): Promise<DashboardData> {
   const sb = await repo.client();
 
   const [stats, ranks, displayName, seals, weaknesses, strengths, latest, revisions] = await Promise.all([
     repo.getStats(sb),
-    repo.getRanks(sb),
+    getRanksCached(sb),
     repo.getProfileName(sb, user.email?.split("@")[0] ?? "Juriste"),
     repo.getRecentSeals(sb),
     repo.getWeaknesses(sb),

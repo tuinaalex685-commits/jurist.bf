@@ -9,4 +9,6 @@ export const cacheKeys = {
   articleParcours: (articleVersionId: string) => `jbf:parcours:${articleVersionId}`,
   search: (query: string) => `jbf:search:${query.toLowerCase().trim()}`,
   aiGenLock: (inputHash: string) => `jbf:ai:lock:${inputHash}`,
+  /** Référentiel des rangs : identique pour TOUS les utilisateurs, quasi immuable. */
+  ranks: () => `jbf:ref:ranks`,
 } as const;

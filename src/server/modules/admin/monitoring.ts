@@ -1,5 +1,7 @@
 import "server-only";
 import { logger } from "@/server/core/logging/logger";
+import { cacheBackend } from "@/server/core/cache/cache";
+import { env } from "@/server/core/config/env";
 import * as repo from "./repository";
 
 /**
@@ -109,6 +111,24 @@ export async function evaluateSystemHealth(): Promise<HealthReport> {
     raised.push("circuit_open");
   } else {
     if (await repo.resolveAlertsByFingerprint("circuit_open")) resolved.push("circuit_open");
+  }
+
+  // --- Règle 5 : Redis absent en production ---------------------------------
+  // Sans Redis, le verrou de génération n'exclut rien (plusieurs instances
+  // serverless tournent en parallèle) ET le cache est un no-op : chaque page
+  // frappe Postgres. Deux risques simultanés — dépense IA doublée et base
+  // saturée sous charge. C'est une alerte, pas une note de documentation.
+  if (env.NODE_ENV === "production" && cacheBackend() === "noop") {
+    await repo.raiseAlert({
+      kind: "cache_unavailable",
+      severity: "critical",
+      title: "Redis non configuré en production",
+      body: "Le cache est inactif (chaque requête frappe la base) et le verrou anti-doublon des générations IA n'exclut rien entre instances. Configurez UPSTASH_REDIS_REST_URL et UPSTASH_REDIS_REST_TOKEN.",
+      fingerprint: "cache_unavailable",
+    });
+    raised.push("cache_unavailable");
+  } else {
+    if (await repo.resolveAlertsByFingerprint("cache_unavailable")) resolved.push("cache_unavailable");
   }
 
   if (raised.length || resolved.length) {

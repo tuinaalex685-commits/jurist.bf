@@ -15,6 +15,14 @@ import type { GenerationResult } from "@/server/contracts/ai";
 const CONTENT_TYPE = "bundle";
 
 /**
+ * Durée de vie du verrou de génération. Doit rester STRICTEMENT supérieure au
+ * temps d'exécution maximal d'un passage de worker (`maxDuration = 60 s` sur
+ * /api/internal/worker), sinon le verrou expirerait pendant le travail et
+ * autoriserait une seconde génération — donc une facture doublée.
+ */
+const LOCK_TTL_S = 180;
+
+/**
  * Pipeline complet de génération pour UN article :
  * dédup (input_hash) → budget → verrou → appel provider (retry) → validation
  * du bundle → persistance (ai_generations/ai_usage) → écriture en `draft`.
@@ -47,10 +55,12 @@ export async function generateForArticle(articleId: string): Promise<GenerationR
   await assertBudgetAvailable();
 
   // 3) Verrou de dédup (évite deux générations concurrentes pour la même clé).
+  //    TTL > durée max d'exécution du worker (maxDuration = 60 s) : le verrou
+  //    ne peut pas expirer sous les pieds d'une génération encore en cours.
   const cache = getCache();
   const lockKey = cacheKeys.aiGenLock(inputHash);
-  const acquired = await cache.setIfAbsent(lockKey, 120);
-  if (!acquired) {
+  const lock = await cache.acquireLock(lockKey, LOCK_TTL_S);
+  if (!lock) {
     throw AppError.conflict("Une génération est déjà en cours pour cet article — réessayez dans un instant");
   }
 
@@ -87,6 +97,8 @@ export async function generateForArticle(articleId: string): Promise<GenerationR
     logger.info("ai_generation_success", { articleId, inputHash, model: response.model, costUsd: response.costUsd });
     return { cacheHit: false, ...written, tokensIn: saved?.tokens_in ?? response.tokensIn, tokensOut: saved?.tokens_out ?? response.tokensOut, costUsd: response.costUsd };
   } finally {
-    await cache.del(lockKey);
+    // Relâche uniquement si le verrou nous appartient encore : ne jamais
+    // effacer celui d'un autre worker (cf. Cache.releaseLock).
+    await cache.releaseLock(lock);
   }
 }

@@ -1,5 +1,7 @@
 import { requireAdminPage } from "@/server/modules/admin/guard";
 import { getJobsHealth, getOverview, listAudit } from "@/server/modules/admin/service";
+import { cacheBackend } from "@/server/core/cache/cache";
+import { isConfigured } from "@/server/core/config/env";
 import { PageHeader, SectionTitle } from "@/components/admin/ui/page-header";
 import { StatTile } from "@/components/admin/ui/stat-tile";
 import { DataTable, TableBody, TableEmpty, TableHead, TableRow, TableTd, TableTh } from "@/components/admin/ui/data-table";
@@ -24,6 +26,7 @@ export default async function HealthPage() {
 
   const stalled = jobs.oldestPendingAgeS > STALLED_QUEUE_S;
   const lastCompleted = jobs.lastCompletedAt ? new Date(jobs.lastCompletedAt) : null;
+  const redisOn = cacheBackend() === "upstash";
 
   return (
     <>
@@ -67,6 +70,49 @@ export default async function HealthPage() {
           }
         />
       </div>
+
+      <section className="mt-6">
+        <SectionTitle hint="dégradation gracieuse : l'absence d'une brique ne casse pas l'application, mais la fragilise">
+          Dépendances externes
+        </SectionTitle>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatTile
+            label="Cache & verrous (Redis)"
+            value={redisOn ? "Actif" : "Inactif"}
+            status={redisOn ? "good" : "critical"}
+            statusLabel={
+              redisOn
+                ? "Cache et exclusion mutuelle opérationnels"
+                : "Cache no-op : chaque requête frappe la base"
+            }
+            hint={redisOn ? "Upstash" : "UPSTASH_REDIS_REST_URL manquante"}
+          />
+          <StatTile
+            label="Limitation de débit"
+            value={redisOn ? "Active" : "Inactive"}
+            status={redisOn ? "good" : "warning"}
+            statusLabel={redisOn ? "Quotas appliqués" : "Aucun quota : API exposée au martèlement"}
+            hint="dépend de Redis"
+          />
+          <StatTile
+            label="Modèle IA"
+            value={isConfigured.gemini() ? "Gemini" : "Simulateur"}
+            status={isConfigured.gemini() ? "good" : "warning"}
+            statusLabel={
+              isConfigured.gemini() ? "Générations réelles" : "Contenu factice marqué [MOCK]"
+            }
+            hint={isConfigured.gemini() ? undefined : "GEMINI_API_KEY manquante"}
+          />
+          <StatTile
+            label="Base de données"
+            value={isConfigured.supabaseAdmin() ? "Connectée" : "Non configurée"}
+            status={isConfigured.supabaseAdmin() ? "good" : "critical"}
+            statusLabel={
+              isConfigured.supabaseAdmin() ? "Accès service opérationnel" : "SUPABASE_SERVICE_ROLE_KEY manquante"
+            }
+          />
+        </div>
+      </section>
 
       <section className="mt-6">
         <SectionTitle hint="50 dernières actions">Journal d&apos;audit</SectionTitle>
