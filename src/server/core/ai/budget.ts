@@ -31,9 +31,12 @@ export async function checkBudget(): Promise<BudgetStatus> {
   const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
   const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
 
+  // Somme calculée EN SQL (migration 0016) : `ai_usage` croît sans borne, la
+  // ramener côté Node pour la sommer ne tiendrait pas la charge.
   const sumSince = async (iso: string) => {
-    const { data } = await admin.from("ai_usage").select("cost_usd").gte("created_at", iso);
-    return (data ?? []).reduce((acc, r) => acc + Number(r.cost_usd), 0);
+    const { data, error } = await admin.rpc("ai_cost_since", { p_since: iso });
+    if (error) throw AppError.dependency("Lecture du coût IA échouée", error);
+    return Number(data ?? 0);
   };
 
   const [dailySpent, monthlySpent] = await Promise.all([sumSince(startOfDay.toISOString()), sumSince(startOfMonth.toISOString())]);

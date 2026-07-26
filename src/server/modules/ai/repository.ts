@@ -166,28 +166,25 @@ export async function recordUsage(row: { feature: string; codeId: string; tokens
   await admin().from("ai_usage").insert({ feature: row.feature, code_id: row.codeId, tokens_in: row.tokensIn, tokens_out: row.tokensOut, cost_usd: row.costUsd, cache_hit: row.cacheHit });
 }
 
+/**
+ * Synthèse d'usage IA — un seul aller-retour, tout agrégé en SQL (migration 0016).
+ * Remplace les 5 requêtes + sommes côté Node de la version B7, qui balayaient
+ * `ai_usage` en entier à chaque affichage du cockpit.
+ */
 export async function getUsageSummary() {
-  const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-  const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
-
-  const sumSince = async (iso: string) => {
-    const { data } = await admin().from("ai_usage").select("cost_usd").gte("created_at", iso);
-    return (data ?? []).reduce((a, r) => a + Number(r.cost_usd), 0);
-  };
-  const [todayCostUsd, monthCostUsd] = await Promise.all([sumSince(startOfDay.toISOString()), sumSince(startOfMonth.toISOString())]);
-
-  const { data: config } = await admin().from("ai_budget_config").select("daily_usd,monthly_usd,circuit_open").eq("id", 1).maybeSingle();
-  const { count: totalGenerations } = await admin().from("ai_generations").select("*", { count: "exact", head: true });
-  const { count: cacheHits } = await admin().from("ai_usage").select("*", { count: "exact", head: true }).eq("cache_hit", true);
-  const { count: totalUsage } = await admin().from("ai_usage").select("*", { count: "exact", head: true });
+  const { data, error } = await admin().rpc("admin_ai_usage_summary");
+  if (error) throw AppError.dependency("Lecture de la consommation IA échouée", error);
+  const raw = (data ?? {}) as Record<string, unknown>;
+  const num = (v: unknown, fallback = 0) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
 
   return {
-    todayCostUsd, monthCostUsd,
-    dailyLimitUsd: config?.daily_usd ?? 5,
-    monthlyLimitUsd: config?.monthly_usd ?? 50,
-    circuitOpen: config?.circuit_open ?? false,
-    totalGenerations: totalGenerations ?? 0,
-    cacheHitRate: totalUsage ? (cacheHits ?? 0) / totalUsage : 0,
+    todayCostUsd: num(raw.todayCostUsd),
+    monthCostUsd: num(raw.monthCostUsd),
+    dailyLimitUsd: num(raw.dailyLimitUsd, 5),
+    monthlyLimitUsd: num(raw.monthlyLimitUsd, 50),
+    circuitOpen: Boolean(raw.circuitOpen),
+    totalGenerations: num(raw.totalGenerations),
+    cacheHitRate: num(raw.cacheHitRate),
   };
 }
 
